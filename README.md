@@ -8,6 +8,10 @@ This is a small utility that given 2 postgres databases, will tell you what tabl
 
 Specifically it compares table data and sequences. It won't tell you _exactly_ what rows are different but a range of rows that are different (depending on `--chunk-size` parameter)
 
+# What it does not
+
+Doesn't check that the schemas are the same.. i.e. stored procedures, indexes, contraints.. For this use a tool like https://www.postgrescompare.com/ or diff a schema dump from both databases.
+
 ### How does it determine if table data is different?
 
 Firstly it compares the row count in both tables.
