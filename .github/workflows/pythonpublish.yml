@@ -24,7 +24,7 @@ jobs:
     - name: Publish to Docker
       uses: elgohr/Publish-Docker-Github-Action@master
       with:
-        name: dmarkey/pgdatadiff
+        name: dmarkey/pgdatadiff/pgdatadiff
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
         registry: docker.pkg.github.com
