@@ -6,7 +6,7 @@
 
 This is a small utility that given 2 postgres databases, will tell you what tables have different data. Specificaly it was developed to test replication is working correctly between 2 postgres databases.
 
-Specifically it compares tables data and sequences. It wont tell you _exactly_ what rows are different but a range of rows that are different (depending on `--chunk-size` parameter)
+Specifically it compares table data and sequences. It won't tell you _exactly_ what rows are different but a range of rows that are different (depending on `--chunk-size` parameter)
 
 ### How does it determine if table data is different?
 
