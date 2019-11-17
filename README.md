@@ -1,5 +1,6 @@
 # PGDataDiff
-Small python utility to diff the data between 2 postgres databases.
+
+[![asciicast](https://asciinema.org/a/281974.svg)](https://asciinema.org/a/281974)
 
 ## Introduction
 
@@ -13,12 +14,18 @@ Firstly it compares the row count in both tables.
 
 If the row count is the same, it gets postgres to create MD5 sums of "chunks" of the table. This way no data is actually read directly by `pgdatadiff`, it also means that `pgdatadiff` is relatively fast but is puts the databases a moderate amount of pressure as it calculates the MD5 sums of large amounts of data.
 
-# Installation
+## Installation
 
 The latest version can be installed using `pip install pgdatadiff`. Python 3.6+ is required.
 
-# Usage
+## Usage
 
-TODO.
+Check `pgdatadiff --help`
+
+## Docker Images
+
+Docker images are available.
+
+`docker run -it davidjmarkey/pgdatadiff:0.1.0 /usr/bin/pgdatadiff`
 
 
