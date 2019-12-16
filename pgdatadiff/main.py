@@ -34,7 +34,11 @@ def main():
     differ = DBDiff(first_db_connection_string, second_db_connection_string,
                     chunk_size=arguments['--chunk-size'],
                     count_only=arguments['--count-only'])
+
     if not arguments['--only-sequences']:
-        return differ.diff_all_table_data()
+        if differ.diff_all_table_data():
+            return 1
     if not arguments['--only-data']:
-        return differ.diff_all_sequences()
+        if differ.diff_all_sequences():
+            return 1
+    return 0
