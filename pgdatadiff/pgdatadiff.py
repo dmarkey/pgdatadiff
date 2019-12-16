@@ -19,7 +19,7 @@ def make_session(connection_string):
 
 class DBDiff(object):
 
-    def __init__(self, firstdb, seconddb, chunk_size=10000):
+    def __init__(self, firstdb, seconddb, chunk_size=10000, count_only=False):
         firstsession, firstengine = make_session(firstdb)
         secondsession, secondengine = make_session(seconddb)
         self.firstsession = firstsession
@@ -31,6 +31,7 @@ class DBDiff(object):
         self.firstinspector = inspect(firstengine)
         self.secondinspector = inspect(secondengine)
         self.chunk_size = int(chunk_size)
+        self.count_only = count_only
 
     def diff_table_data(self, tablename):
         try:
@@ -45,7 +46,8 @@ class DBDiff(object):
                               f" {firstquery.count()} != {secondquery.count()}"
             if firstquery.count() == 0:
                 return None, "tables are empty"
-
+            if self.count_only is True:
+                return True, "Counts are the same"
             pk = ",".join(self.firstinspector.get_pk_constraint(tablename)[
                               'constrained_columns'])
             if not pk:
@@ -107,12 +109,13 @@ class DBDiff(object):
                          f" the first({firstvalue} vs {secondvalue})."
         if firstvalue > secondvalue:
             return False, f"first sequence is greater than" \
-                          f" the first({firstvalue} vs {secondvalue})."
+                          f" the second({firstvalue} vs {secondvalue})."
         return True, f"sequences are identical- ({firstvalue})."
 
     def diff_all_sequences(self):
         print(bold(red('Starting sequence analysis.')))
         sequences = sorted(self.get_all_sequences())
+        failures = 0
         for sequence in sequences:
             with Halo(
                     text=f"Analysing sequence {sequence}. "
@@ -124,10 +127,15 @@ class DBDiff(object):
                 elif result is None:
                     spinner.warn(f"{sequence} - {message}")
                 else:
+                    failures += 1
                     spinner.fail(f"{sequence} - {message}")
         print(bold(green('Sequence analysis complete.')))
+        if failures > 0:
+            return 1
+        return 0
 
     def diff_all_table_data(self):
+        failures = 0
         print(bold(red('Starting table analysis.')))
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=sa_exc.SAWarning)
@@ -144,6 +152,10 @@ class DBDiff(object):
                     elif result is None:
                         spinner.warn(f"{table} - {message}")
                     else:
+                        failures += 1
                         spinner.fail(f"{table} - {message}")
         print(bold(green('Table analysis complete.')))
+        if failures > 0:
+            return 1
+        return 0
 

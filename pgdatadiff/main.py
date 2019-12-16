@@ -1,6 +1,6 @@
 """
 Usage:
-  pgdatadiff --firstdb=<firstconnectionstring> --seconddb=<secondconnectionstring> [--only-data|--only-sequences] [--chunk-size=<size>]
+  pgdatadiff --firstdb=<firstconnectionstring> --seconddb=<secondconnectionstring> [--only-data|--only-sequences] [--count-only] [--chunk-size=<size>]
   pgdatadiff --version
 
 Options:
@@ -10,6 +10,7 @@ Options:
   --seconddb=postgres://postgres:password@localhost/seconddb         The connection string of the second DB
   --only-data        Only compare data, exclude sequences
   --only-sequences   Only compare seqences, exclude data
+  --count-only       Do a quick test based on counts alone
   --chunk-size=10000       The chunk size when comparing data [default: 10000]
 """
 
@@ -31,8 +32,13 @@ def main():
         return 1
 
     differ = DBDiff(first_db_connection_string, second_db_connection_string,
-                    chunk_size=arguments['--chunk-size'])
+                    chunk_size=arguments['--chunk-size'],
+                    count_only=arguments['--count-only'])
+
     if not arguments['--only-sequences']:
-        differ.diff_all_table_data()
+        if differ.diff_all_table_data():
+            return 1
     if not arguments['--only-data']:
-        differ.diff_all_sequences()
+        if differ.diff_all_sequences():
+            return 1
+    return 0
