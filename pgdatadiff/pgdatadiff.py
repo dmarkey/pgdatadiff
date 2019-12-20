@@ -106,7 +106,7 @@ class DBDiff(object):
             return False, "sequence doesnt exist in second database."
         if firstvalue < secondvalue:
             return None, f"first sequence is less than" \
-                         f" the first({firstvalue} vs {secondvalue})."
+                         f" the second({firstvalue} vs {secondvalue})."
         if firstvalue > secondvalue:
             return False, f"first sequence is greater than" \
                           f" the second({firstvalue} vs {secondvalue})."
