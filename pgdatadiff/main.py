@@ -7,7 +7,9 @@ Options:
   -h --help          Show this screen.
   --version          Show version.
   --firstdb=postgres://postgres:password@localhost/firstdb        The connection string of the first DB
+  --firstschemas=public         The schemas to compare in the first DB, comma separated
   --seconddb=postgres://postgres:password@localhost/seconddb         The connection string of the second DB
+  --secondschemas=public        The schemas to compare in the second DB, comma separated
   --only-data        Only compare data, exclude sequences
   --only-sequences   Only compare seqences, exclude data
   --count-only       Do a quick test based on counts alone
@@ -32,6 +34,8 @@ def main():
         return 1
 
     differ = DBDiff(first_db_connection_string, second_db_connection_string,
+                    firstdb_schemas=arguments['--firstschemas'],
+                    seconddb_schemas=arguments['--secondschemas'],
                     chunk_size=arguments['--chunk-size'],
                     count_only=arguments['--count-only'])
 

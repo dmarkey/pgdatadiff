@@ -10,18 +10,18 @@ from sqlalchemy.orm.session import sessionmaker
 from sqlalchemy.sql.schema import MetaData, Table
 
 
-def make_session(connection_string):
+def make_session(connection_string, schemas):
     engine = create_engine(connection_string, echo=False,
-                           convert_unicode=True)
+                           convert_unicode=True, connect_args={'options': '-csearch_path={}'.format(schemas)})
     Session = sessionmaker(bind=engine)
     return Session(), engine
 
 
 class DBDiff(object):
 
-    def __init__(self, firstdb, seconddb, chunk_size=10000, count_only=False):
-        firstsession, firstengine = make_session(firstdb)
-        secondsession, secondengine = make_session(seconddb)
+    def __init__(self, firstdb, seconddb, firstdb_schemas="public", seconddb_schemas="public", chunk_size=10000, count_only=False):
+        firstsession, firstengine = make_session(firstdb, firstdb_schemas)
+        secondsession, secondengine = make_session(seconddb, seconddb_schemas)
         self.firstsession = firstsession
         self.firstengine = firstengine
         self.secondsession = secondsession
