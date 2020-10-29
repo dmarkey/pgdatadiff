@@ -1,6 +1,6 @@
 """
 Usage:
-  pgdatadiff --firstdb=<firstconnectionstring> --seconddb=<secondconnectionstring> [--only-data|--only-sequences] [--count-only] [--chunk-size=<size>]
+  pgdatadiff --firstdb=<firstconnectionstring> --seconddb=<secondconnectionstring> [--firstschemas=<firstschemas>] [--secondschemas=<secondschemas>] [--only-data|--only-sequences] [--count-only] [--chunk-size=<size>]
   pgdatadiff --version
 
 Options:
