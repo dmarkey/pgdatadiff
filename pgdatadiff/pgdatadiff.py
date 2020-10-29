@@ -11,8 +11,10 @@ from sqlalchemy.sql.schema import MetaData, Table
 
 
 def make_session(connection_string, schemas):
+    #engine = create_engine(connection_string, echo=False,
+    #                       convert_unicode=True, connect_args={'options': '-csearch_path={}'.format(schemas)})
     engine = create_engine(connection_string, echo=False,
-                           convert_unicode=True, connect_args={'options': '-csearch_path={}'.format(schemas)})
+                            convert_unicode=True)
     Session = sessionmaker(bind=engine)
     return Session(), engine
 
@@ -26,8 +28,8 @@ class DBDiff(object):
         self.firstengine = firstengine
         self.secondsession = secondsession
         self.secondengine = secondengine
-        self.firstmeta = MetaData(bind=firstengine)
-        self.secondmeta = MetaData(bind=secondengine)
+        self.firstmeta = MetaData(bind=firstengine, schema=firstdb_schemas)
+        self.secondmeta = MetaData(bind=secondengine, schema=seconddb_schemas)
         self.firstinspector = inspect(firstengine)
         self.secondinspector = inspect(secondengine)
         self.chunk_size = int(chunk_size)
