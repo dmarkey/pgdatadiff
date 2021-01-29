@@ -17,7 +17,7 @@ setup(
     install_requires=[
         'SQLAlchemy<=1.3.11',
         'halo<=0.0.28',
-        'psycopg2<=2.8.4',
+        'psycopg2-binary<=2.8.4',
         'fabulous<=0.3.0',
         'docopt<=0.6.2'
     ],
