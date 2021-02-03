@@ -49,7 +49,7 @@ class DBDiff(object):
                 return None, "tables are empty"
             if self.count_only is True:
                 return True, "Counts are the same"
-            pk = ",".join(['"' + x + '"' for x in self.firstinspector.get_pk_constraint(tablename)['constrained_columns']])
+            pk = ",".join([f'"{x}"' for x in self.firstinspector.get_pk_constraint(tablename)['constrained_columns']])
             if not pk:
                 return None, "no primary key(s) on this table." \
                              " Comparision is not possible."
@@ -67,7 +67,7 @@ class DBDiff(object):
                         """
 
         SQL_DIFFERENCE_BLOCK = f"""
-            SELECT {pk}, '[' || (t.*)::varchar || ']'
+            SELECT (t.*)::varchar
             FROM "{self.schema_name}"."{tablename}" t
             ORDER BY {pk} limit :row_limit offset :row_offset;
                         """
@@ -94,9 +94,11 @@ class DBDiff(object):
                     "row_offset": position}).fetchall()
                 index = position
                 for first, second in zip(firstdiff, seconddiff):
-                    if first != second:
-                        return False, f"data first differs at position: {index} - diff: [{first}] <> [{second}]" \
-                                    f" - Comparison ends"
+                    first_row = first[0]
+                    second_row = second[0]
+                    if first_row != second_row:
+                        return False, f"data first differs at position: {index}\n1st: {first_row}\n2nd: {second_row}" \
+                                    f"\nComparison ends.\n"
                     index += 1
                 return False, f"data is different - position {position} -" \
                               f" {position + self.chunk_size}"

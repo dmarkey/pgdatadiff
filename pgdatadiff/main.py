@@ -33,10 +33,12 @@ def main():
         print(red("Only Postgres DBs are supported"))
         return 1
 
-    schema_name='public'
+    schema_name=arguments['--schema']
 
-    if '--schema' in arguments:
-        schema_name=arguments['--schema']
+    if not schema_name:
+        schema_name='public'
+
+    print(f"Checking database using schema [{schema_name}]...")
 
     differ = DBDiff(first_db_connection_string, second_db_connection_string, schema_name,
                     chunk_size=arguments['--chunk-size'],
