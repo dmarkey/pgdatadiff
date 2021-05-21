@@ -52,7 +52,7 @@ class DBDiff(object):
                               'constrained_columns'])
             if not pk:
                 return None, "no primary key(s) on this table." \
-                             " Comparision is not possible."
+                             " Comparison is not possible."
 
         except NoSuchTableError:
             return False, "table is missing"
