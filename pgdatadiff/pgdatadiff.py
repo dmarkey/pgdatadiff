@@ -33,7 +33,11 @@ class DBDiff(object):
         self.chunk_size = int(chunk_size)
         self.count_only = count_only
         self.exclude_tables = exclude_tables.split(',')
+        self.schema_names = self.firstinspector.get_schema_names()
         self.schema = schema or 'public'
+        if self.schema not in self.schema_names:
+            raise ValueError("Schema not found, check if argument has valid schema name")
+        print(f"Comparing for schema {self.schema}")
 
     def diff_table_data(self, tablename):
         try:
@@ -143,6 +147,9 @@ class DBDiff(object):
             warnings.simplefilter("ignore", category=sa_exc.SAWarning)
             tables = sorted(
                 self.firstinspector.get_table_names(schema=self.schema))
+            if len(tables) == 0:
+                print(bold(red(f'No tables found in schema: {self.schema}')))
+                return 0
             for table in tables:
                 if table in self.exclude_tables:
                     print(bold(yellow(f"Ignoring table {table}")))
