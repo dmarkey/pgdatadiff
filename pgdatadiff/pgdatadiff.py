@@ -64,7 +64,7 @@ class DBDiff(object):
             return False, "table is missing"
 
         SQL_TEMPLATE_HASH = f"""
-        SELECT md5(array_agg(md5((t.*)::varchar))::varchar)
+        SELECT md5(array_agg(md5((t.*)::text))::text)
         FROM (
                 SELECT *
                 FROM {self.schema}.{tablename}
@@ -84,14 +84,13 @@ class DBDiff(object):
                 {"row_limit": self.chunk_size,
                  "row_offset": position}).fetchone()
             if firstresult != secondresult:
-                return False, f"data is different - position {position} -" \
+                return False, f"data is different - for rows from {position} - to" \
                               f" {position + self.chunk_size}"
             position += self.chunk_size
         return True, "data is identical."
 
     def get_all_sequences(self):
-        GET_SEQUENCES_SQL = """SELECT c.relname FROM 
-        pg_class c WHERE c.relkind = 'S';"""
+        GET_SEQUENCES_SQL = f"""SELECT sequence_name FROM information_schema.sequences WHERE sequence_schema = {self.schema};"""
         return [x[0] for x in
                 self.firstsession.execute(GET_SEQUENCES_SQL).fetchall()]
 
@@ -119,7 +118,7 @@ class DBDiff(object):
         return True, f"sequences are identical- ({firstvalue})."
 
     def diff_all_sequences(self):
-        print(bold(red('Starting sequence analysis.')))
+        print(bold(red(f'Starting sequence analysis for schema -> {self.schema}')))
         sequences = sorted(self.get_all_sequences())
         failures = 0
         for sequence in sequences:
