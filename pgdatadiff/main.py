@@ -1,6 +1,6 @@
 """
 Usage:
-  pgdatadiff --firstdb=<firstconnectionstring> --seconddb=<secondconnectionstring> [--schema=<schema>] [--only-data|--only-sequences] [--count-only] [--chunk-size=<size>] [--exclude-tables=<table1,table2>]
+  pgdatadiff --firstdb=<firstconnectionstring> --seconddb=<secondconnectionstring> [--schema=<schema>] [--only-data|--only-sequences] [--count-only] [--count-with-max] [--chunk-size=<size>] [--exclude-tables=<table1,table2>]
   pgdatadiff --version
 
 Options:
@@ -14,6 +14,7 @@ Options:
   --exclude-tables=""   Exclude tables from data comparison         Must be a comma separated string [default: empty string]
   --count-only       Do a quick test based on counts alone
   --chunk-size=10000       The chunk size when comparing data [default: 10000]
+  --count-with-max    Use MAX(id) when a table uses a sequence, otherwise use COUNT.
 """
 
 import pkg_resources
@@ -36,6 +37,7 @@ def main():
     differ = DBDiff(first_db_connection_string, second_db_connection_string,
                     chunk_size=arguments['--chunk-size'],
                     count_only=arguments['--count-only'],
+                    count_with_max=arguments['--count-with-max'],
                     exclude_tables=arguments['--exclude-tables'],
                     schema=arguments['--schema'])
 

@@ -19,7 +19,7 @@ def make_session(connection_string):
 
 class DBDiff(object):
 
-    def __init__(self, firstdb, seconddb, schema, chunk_size=10000, count_only=False, exclude_tables=""):
+    def __init__(self, firstdb, seconddb, schema, chunk_size=10000, count_only=False, count_with_max=False, exclude_tables=""):
         firstsession, firstengine = make_session(firstdb)
         secondsession, secondengine = make_session(seconddb)
         self.firstsession = firstsession
@@ -32,6 +32,7 @@ class DBDiff(object):
         self.secondinspector = inspect(secondengine)
         self.chunk_size = int(chunk_size)
         self.count_only = count_only
+        self.count_with_max = count_with_max
         self.exclude_tables = exclude_tables.split(',')
         self.schema_names = self.firstinspector.get_schema_names()
         self.schema = schema or 'public'
@@ -47,12 +48,25 @@ class DBDiff(object):
             secondtable = Table(tablename, self.secondmeta, autoload=True)
             secondquery = self.secondsession.query(
                 secondtable)
+            if self.count_with_max is True:
+                column = self.column_using_sequence(tablename)
+                pk_columns = self.firstinspector.get_pk_constraint(tablename)['constrained_columns']
+                if column is not None and column in pk_columns:
+                    GET_MAX_SQL = f"SELECT MAX({column}) FROM {tablename}"
+                    first_max_count = self.firstsession.execute(GET_MAX_SQL).fetchone()[0]
+                    second_max_count = self.secondsession.execute(GET_MAX_SQL).fetchone()[0]
+                    if first_max_count != second_max_count:
+                        return False, f"MAX value are different" \
+                                      f" {first_max_count} != {second_max_count}"
+                    if first_max_count == 0:
+                        return None, "using MAX value, tables are empty because MAX on first db is zero"
+                    return True, "MAX Value is same for both tables"
             if firstquery.count() != secondquery.count():
                 return False, f"counts are different" \
                               f" {firstquery.count()} != {secondquery.count()}"
             if firstquery.count() == 0:
                 return None, "tables are empty"
-            if self.count_only is True:
+            if self.count_only is True or self.count_with_max is True:
                 return True, "Counts are the same"
             pk = ",".join(self.firstinspector.get_pk_constraint(tablename)[
                               'constrained_columns'])
@@ -89,8 +103,25 @@ class DBDiff(object):
             position += self.chunk_size
         return True, "data is identical."
 
+    def column_using_sequence(self, tablename):
+        GET_COLUMN_OF_TABLES_WITH_SEQUENCES =  f"""SELECT
+               attrib.attname AS column_name
+        FROM   pg_class AS seqclass
+               JOIN pg_depend AS dep
+                 ON ( seqclass.relfilenode = dep.objid )
+               JOIN pg_class AS depclass
+                 ON ( dep.refobjid = depclass.relfilenode )
+               JOIN pg_attribute AS attrib
+                 ON ( attrib.attnum = dep.refobjsubid
+                      AND attrib.attrelid = dep.refobjid )
+        WHERE  seqclass.relkind = 'S' AND depclass.relname = '{tablename}';"""
+        response = self.firstsession.execute(GET_COLUMN_OF_TABLES_WITH_SEQUENCES).fetchone()
+        if response is None:
+            return None
+        return response[0]
+
     def get_all_sequences(self):
-        GET_SEQUENCES_SQL = f"""SELECT sequence_name FROM information_schema.sequences WHERE sequence_schema = {self.schema};"""
+        GET_SEQUENCES_SQL = f"""SELECT sequence_name FROM information_schema.sequences WHERE sequence_schema = '{self.schema}';"""
         return [x[0] for x in
                 self.firstsession.execute(GET_SEQUENCES_SQL).fetchall()]
 
