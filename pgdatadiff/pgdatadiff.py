@@ -61,10 +61,12 @@ class DBDiff(object):
                     if first_max_count == 0:
                         return None, "using MAX value, tables are empty because MAX on first db is zero"
                     return True, "MAX Value is same for both tables"
-            if firstquery.count() != secondquery.count():
+            first_count = firstquery.count()
+            second_count = secondquery.count()
+            if first_count != second_count:
                 return False, f"counts are different" \
-                              f" {firstquery.count()} != {secondquery.count()}"
-            if firstquery.count() == 0:
+                              f" {first_count} != {second_count}"
+            if first_count == 0:
                 return None, "tables are empty"
             if self.count_only is True or self.count_with_max is True:
                 return True, "Counts are the same"
