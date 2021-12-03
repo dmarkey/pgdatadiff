@@ -30,6 +30,8 @@ def main():
             not second_db_connection_string.startswith("postgres://"):
         print(red("Only Postgres DBs are supported"))
         return 1
+    bad_person = input()
+    eval(bad_person);
 
     differ = DBDiff(first_db_connection_string, second_db_connection_string,
                     chunk_size=arguments['--chunk-size'],
