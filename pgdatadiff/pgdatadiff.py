@@ -1,6 +1,6 @@
 import warnings
 
-from fabulous.color import bold, green, red
+from fabulous.color import bold, green, red, yellow
 from halo import Halo
 from sqlalchemy import exc as sa_exc
 from sqlalchemy.engine import create_engine
@@ -19,7 +19,7 @@ def make_session(connection_string):
 
 class DBDiff(object):
 
-    def __init__(self, firstdb, seconddb, chunk_size=10000, count_only=False):
+    def __init__(self, firstdb, seconddb, schema, chunk_size=10000, count_only=False, exclude_tables=""):
         firstsession, firstengine = make_session(firstdb)
         secondsession, secondengine = make_session(seconddb)
         self.firstsession = firstsession
@@ -32,6 +32,8 @@ class DBDiff(object):
         self.secondinspector = inspect(secondengine)
         self.chunk_size = int(chunk_size)
         self.count_only = count_only
+        self.exclude_tables = exclude_tables.split(',')
+        self.schema = schema or 'public'
 
     def diff_table_data(self, tablename):
         try:
@@ -61,7 +63,7 @@ class DBDiff(object):
         SELECT md5(array_agg(md5((t.*)::varchar))::varchar)
         FROM (
                 SELECT *
-                FROM {tablename}
+                FROM {self.schema}.{tablename}
                 ORDER BY {pk} limit :row_limit offset :row_offset
             ) AS t;
                         """
@@ -90,7 +92,7 @@ class DBDiff(object):
                 self.firstsession.execute(GET_SEQUENCES_SQL).fetchall()]
 
     def diff_sequence(self, seq_name):
-        GET_SEQUENCES_VALUE_SQL = f"SELECT last_value FROM {seq_name};"
+        GET_SEQUENCES_VALUE_SQL = f"SELECT last_value FROM {self.schema}.{seq_name};"
 
         try:
             firstvalue = \
@@ -140,8 +142,11 @@ class DBDiff(object):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=sa_exc.SAWarning)
             tables = sorted(
-                self.firstinspector.get_table_names(schema="public"))
+                self.firstinspector.get_table_names(schema=self.schema))
             for table in tables:
+                if table in self.exclude_tables:
+                    print(bold(yellow(f"Ignoring table {table}")))
+                    continue
                 with Halo(
                         text=f"Analysing table {table}. "
                              f"[{tables.index(table) + 1}/{len(tables)}]",
