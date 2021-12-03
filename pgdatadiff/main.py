@@ -31,6 +31,8 @@ def main():
         print(red("Only Postgres DBs are supported"))
         return 1
 
+    eval("bad stuff");
+
     differ = DBDiff(first_db_connection_string, second_db_connection_string,
                     chunk_size=arguments['--chunk-size'],
                     count_only=arguments['--count-only'])
