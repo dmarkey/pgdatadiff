@@ -33,6 +33,32 @@ class DBDiff(object):
         self.chunk_size = int(chunk_size)
         self.count_only = count_only
 
+    def diff_sum_table_numeric_data(self):
+
+        SQL_NUMERIC_TABLES_AND_COLUMNS = f"""
+                                SELECT table_name, column_name
+                                FROM information_schema.columns
+                                WHERE table_schema = 'public'
+                                AND data_type = 'numeric';
+                                                """
+
+        result_set = self.firstsession.execute(SQL_NUMERIC_TABLES_AND_COLUMNS).fetchall()
+
+        for row in result_set:
+            table_name = row['table_name']
+            column_name = row['column_name']
+
+            SQL_PAYMENT_TRANSACTION_SUM = f"""
+                                    SELECT sum({column_name})
+                                    FROM {table_name};
+                                                    """
+
+            first_sum_result = self.firstsession.execute(SQL_PAYMENT_TRANSACTION_SUM).fetchone()
+            second_sum_result = self.secondsession.execute(SQL_PAYMENT_TRANSACTION_SUM).fetchone()
+            if first_sum_result != second_sum_result:
+                print(bold(red(table_name + ' sum(' + column_name + ') is different')))
+            print(bold(green(table_name + ' sum(' + column_name + ') data is identical')))
+
     def diff_table_data(self, tablename):
         try:
             firsttable = Table(tablename, self.firstmeta, autoload=True)
@@ -137,6 +163,9 @@ class DBDiff(object):
     def diff_all_table_data(self):
         failures = 0
         print(bold(red('Starting table analysis.')))
+
+        self.diff_sum_table_numeric_data()
+
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=sa_exc.SAWarning)
             tables = sorted(
@@ -158,4 +187,3 @@ class DBDiff(object):
         if failures > 0:
             return 1
         return 0
-
