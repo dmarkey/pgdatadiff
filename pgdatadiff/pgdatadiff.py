@@ -19,7 +19,7 @@ def make_session(connection_string):
 
 class DBDiff(object):
 
-    def __init__(self, firstdb, seconddb, chunk_size=10000, count_only=False):
+    def __init__(self, firstdb, seconddb, schema_name, chunk_size=10000, count_only=False):
         firstsession, firstengine = make_session(firstdb)
         secondsession, secondengine = make_session(seconddb)
         self.firstsession = firstsession
@@ -32,13 +32,14 @@ class DBDiff(object):
         self.secondinspector = inspect(secondengine)
         self.chunk_size = int(chunk_size)
         self.count_only = count_only
+        self.schema_name = schema_name
 
     def diff_table_data(self, tablename):
         try:
-            firsttable = Table(tablename, self.firstmeta, autoload=True)
+            firsttable = Table(tablename, self.firstmeta, autoload=True, schema=self.schema_name)
             firstquery = self.firstsession.query(
                 firsttable)
-            secondtable = Table(tablename, self.secondmeta, autoload=True)
+            secondtable = Table(tablename, self.secondmeta, autoload=True, schema=self.schema_name)
             secondquery = self.secondsession.query(
                 secondtable)
             if firstquery.count() != secondquery.count():
@@ -48,8 +49,7 @@ class DBDiff(object):
                 return None, "tables are empty"
             if self.count_only is True:
                 return True, "Counts are the same"
-            pk = ",".join(self.firstinspector.get_pk_constraint(tablename)[
-                              'constrained_columns'])
+            pk = ",".join([f'"{x}"' for x in self.firstinspector.get_pk_constraint(tablename)['constrained_columns']])
             if not pk:
                 return None, "no primary key(s) on this table." \
                              " Comparison is not possible."
@@ -61,13 +61,18 @@ class DBDiff(object):
         SELECT md5(array_agg(md5((t.*)::varchar))::varchar)
         FROM (
                 SELECT *
-                FROM {tablename}
+                FROM "{self.schema_name}"."{tablename}"
                 ORDER BY {pk} limit :row_limit offset :row_offset
             ) AS t;
                         """
 
-        position = 0
+        SQL_DIFFERENCE_BLOCK = f"""
+            SELECT (t.*)::varchar
+            FROM "{self.schema_name}"."{tablename}" t
+            ORDER BY {pk} limit :row_limit offset :row_offset;
+                        """
 
+        position = 0
         while position <= firstquery.count():
             firstresult = self.firstsession.execute(
                 SQL_TEMPLATE_HASH,
@@ -78,19 +83,35 @@ class DBDiff(object):
                 {"row_limit": self.chunk_size,
                  "row_offset": position}).fetchone()
             if firstresult != secondresult:
+                # OK - data is different - show the first rows which differ
+                firstdiff = self.firstsession.execute(
+                    SQL_DIFFERENCE_BLOCK,
+                    {"row_limit": self.chunk_size,
+                    "row_offset": position}).fetchall()
+                seconddiff = self.secondsession.execute(
+                    SQL_DIFFERENCE_BLOCK,
+                    {"row_limit": self.chunk_size,
+                    "row_offset": position}).fetchall()
+                index = position
+                for first, second in zip(firstdiff, seconddiff):
+                    first_row = first[0]
+                    second_row = second[0]
+                    if first_row != second_row:
+                        return False, f"data first differs at position: {index}\n1st: {first_row}\n2nd: {second_row}" \
+                                    f"\nComparison ends.\n"
+                    index += 1
                 return False, f"data is different - position {position} -" \
                               f" {position + self.chunk_size}"
             position += self.chunk_size
         return True, "data is identical."
 
     def get_all_sequences(self):
-        GET_SEQUENCES_SQL = """SELECT c.relname FROM 
-        pg_class c WHERE c.relkind = 'S';"""
+        GET_SEQUENCES_SQL = f"""SELECT sequence_name FROM information_schema.sequences WHERE sequence_schema = '{self.schema_name}';"""
         return [x[0] for x in
                 self.firstsession.execute(GET_SEQUENCES_SQL).fetchall()]
 
     def diff_sequence(self, seq_name):
-        GET_SEQUENCES_VALUE_SQL = f"SELECT last_value FROM {seq_name};"
+        GET_SEQUENCES_VALUE_SQL = f"SELECT last_value FROM \"{seq_name}\";"
 
         try:
             firstvalue = \
@@ -110,7 +131,7 @@ class DBDiff(object):
         if firstvalue > secondvalue:
             return False, f"first sequence is greater than" \
                           f" the second({firstvalue} vs {secondvalue})."
-        return True, f"sequences are identical- ({firstvalue})."
+        return True, f"sequences are identical - ({firstvalue})."
 
     def diff_all_sequences(self):
         print(bold(red('Starting sequence analysis.')))
@@ -140,7 +161,7 @@ class DBDiff(object):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=sa_exc.SAWarning)
             tables = sorted(
-                self.firstinspector.get_table_names(schema="public"))
+                self.firstinspector.get_table_names(schema=self.schema_name))
             for table in tables:
                 with Halo(
                         text=f"Analysing table {table}. "
