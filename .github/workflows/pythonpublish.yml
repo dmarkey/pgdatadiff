@@ -22,7 +22,7 @@ jobs:
         user: __token__
         password: ${{ secrets.pypi_password }}
     - name: Publish to Docker
-      uses: elgohr/Publish-Docker-Github-Action@master
+      uses: elgohr/Publish-Docker-Github-Action@v5
       with:
         name: davidjmarkey/pgdatadiff
         username: ${{ secrets.DOCKER_USERNAME }}
