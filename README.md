@@ -32,6 +32,8 @@ Check `pgdatadiff --help`
 
 Docker images are available.
 
-`docker run -it davidjmarkey/pgdatadiff:0.2.1 /usr/bin/pgdatadiff`
+```
+docker run -it davidjmarkey/pgdatadiff:0.2.1 /usr/bin/pgdatadiff --help
+```
 
 
