@@ -19,7 +19,7 @@ def make_session(connection_string):
 
 class DBDiff(object):
 
-    def __init__(self, firstdb, seconddb, schema, chunk_size=10000, count_only=False, count_with_max=False, exclude_tables=""):
+    def __init__(self, firstdb, seconddb, schema, chunk_size=10000, count_only=False, count_with_max=False, progress=True, exclude_tables="", include_tables=""):
         firstsession, firstengine = make_session(firstdb)
         secondsession, secondengine = make_session(seconddb)
         self.firstsession = firstsession
@@ -33,7 +33,15 @@ class DBDiff(object):
         self.chunk_size = int(chunk_size)
         self.count_only = count_only
         self.count_with_max = count_with_max
-        self.exclude_tables = exclude_tables.split(',')
+        self.progress = progress
+        if exclude_tables is None:
+            self.exclude_tables = []
+        else:
+            self.exclude_tables = exclude_tables.split(',')
+        if include_tables is None:
+            self.include_tables = []
+        else:
+            self.include_tables = (include_tables or "").split(',')
         self.schema_names = self.firstinspector.get_schema_names()
         self.schema = schema or 'public'
         if self.schema not in self.schema_names:
@@ -43,11 +51,9 @@ class DBDiff(object):
     def diff_table_data(self, tablename):
         try:
             firsttable = Table(tablename, self.firstmeta, autoload=True)
-            firstquery = self.firstsession.query(
-                firsttable)
+            firstquery = self.firstsession.query(firsttable)
             secondtable = Table(tablename, self.secondmeta, autoload=True)
-            secondquery = self.secondsession.query(
-                secondtable)
+            secondquery = self.secondsession.query(secondtable)
             if self.count_with_max is True:
                 column = self.column_using_sequence(tablename)
                 pk_columns = self.firstinspector.get_pk_constraint(tablename)['constrained_columns']
@@ -90,7 +96,7 @@ class DBDiff(object):
 
         position = 0
 
-        while position <= firstquery.count():
+        while position <= first_count:
             firstresult = self.firstsession.execute(
                 SQL_TEMPLATE_HASH,
                 {"row_limit": self.chunk_size,
@@ -103,7 +109,14 @@ class DBDiff(object):
                 return False, f"data is different - for rows from {position} - to" \
                               f" {position + self.chunk_size}"
             position += self.chunk_size
+            self.display_progress(position, first_count)
         return True, "data is identical."
+
+    def display_progress(self, position, first_count):
+        if position > first_count:
+            position = first_count
+        if first_count > self.chunk_size and self.progress is True:
+            print(f' Progress: {"{:2.1f}".format(position/first_count*100)}%')
 
     def column_using_sequence(self, tablename):
         GET_COLUMN_OF_TABLES_WITH_SEQUENCES =  f"""SELECT
@@ -177,14 +190,16 @@ class DBDiff(object):
         print(bold(red('Starting table analysis.')))
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=sa_exc.SAWarning)
-            tables = sorted(
-                self.firstinspector.get_table_names(schema=self.schema))
+            tables = sorted(self.firstinspector.get_table_names(schema=self.schema))
+            if len(self.include_tables) > 0:
+                # Intersection of 2 array
+                tables = [value for value in tables if value in self.include_tables]
             if len(tables) == 0:
                 print(bold(red(f'No tables found in schema: {self.schema}')))
                 return 0
             for table in tables:
                 if table in self.exclude_tables:
-                    print(bold(yellow(f"Ignoring table {table}")))
+                    print(bold(yellow(f"Ignoring table {table} (excluded)")))
                     continue
                 with Halo(
                         text=f"Analysing table {table}. "
