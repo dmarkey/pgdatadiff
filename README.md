@@ -1,3 +1,4 @@
+# Archived, use https://github.com/pavlospt/rust-pgdatadiff, it's much better.
 # PGDataDiff
 
 [![asciicast](https://asciinema.org/a/281974.svg)](https://asciinema.org/a/281974)
